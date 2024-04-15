@@ -20,3 +20,11 @@ CREATE TABLE `sport` (
   PRIMARY KEY (`id`)
 );
 
+TABLE IF EXISTS `coach`;
+CREATE TABLE `coach` (
+  `Emp_id` bigint NOT NULL,
+  `Name` varchar(255) DEFAULT NULL,
+  `Phone_Number` int DEFAULT NULL,
+  `Sport` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Emp_id`)
+);
