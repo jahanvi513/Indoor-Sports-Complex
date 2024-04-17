@@ -108,3 +108,11 @@ BEGIN
         SET MESSAGE_TEXT = 'Student is blacklisted and cannot make booking';
     END IF;
 END//
+
+CREATE PROCEDURE get_pending_bookings()
+begin
+select b.id, b.room_id, b.booked_date, b.booked_time, s.type as sport_type
+from booking b
+join sport s on b.room_id = s.id
+where b.status = 'Pending';
+end
