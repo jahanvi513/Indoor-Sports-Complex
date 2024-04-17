@@ -68,3 +68,20 @@ CREATE PROCEDURE `view_booking`(in p_id bigint)
 begin
 select * from booking where student_id = p_id;
 end
+
+CREATE TABLE `supervisor` (
+  `id` bigint NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`supervisor_id`)
+);
+
+ALTER TABLE `booking`
+ADD COLUMN `status` ENUM('Pending', 'Accepted', 'Denied') DEFAULT 'Pending';
+
+CREATE PROCEDURE `manage_booking_request`(in p_booking_id bigint, in p_status ENUM('Accepted', 'Denied'))
+begin
+    update booking
+    set status = p_status
+    where id = p_booking_id;
+end;
