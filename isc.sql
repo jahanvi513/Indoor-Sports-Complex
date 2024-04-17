@@ -43,3 +43,28 @@ CREATE TABLE `booking` (
   CONSTRAINT `fk1` FOREIGN KEY (`student_id`) REFERENCES `student` (`roll_no`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk2` FOREIGN KEY (`room_id`) REFERENCES `sport` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE PROCEDURE `insert_new_student`(in p_roll bigint, in p_name varchar(255), in p_email varchar(255), in p_password varchar(255), in p_phone bigint, in p_dept varchar(50), in p_year int)
+begin
+insert into student (roll_no, name, email, password, Phone_no, Department, Year) values (p_roll, p_name, p_email, p_password, p_phone, p_dept, p_year);
+end
+
+CREATE PROCEDURE `delete_student`(in p_id bigint)
+begin
+delete from student where roll_no = p_id;
+end
+
+CREATE PROCEDURE `search_room`(in p_type varchar(255), in p_booked_date date, in p_booked_time time)
+begin
+select * from sport where id not in(select room_id from booking where booked_date = p_booked_type and booked_time  = p_booked_time and status != 'Denied') and type = p_type;
+end
+
+CREATE PROCEDURE `update_student_password`(in p_id bigint, in p_password varchar(50))
+begin update student
+set password = p_password where roll_no = p_id;
+end
+
+CREATE PROCEDURE `view_booking`(in p_id bigint)
+begin
+select * from booking where student_id = p_id;
+end
