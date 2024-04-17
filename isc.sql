@@ -85,3 +85,26 @@ begin
     set status = p_status
     where id = p_booking_id;
 end;
+
+CREATE TABLE blacklist (
+    roll_no bigint NOT NULL,
+    reason varchar(255),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (student_id)
+);
+
+CREATE TRIGGER before_booking
+BEFORE INSERT ON booking
+FOR EACH ROW
+BEGIN
+    DECLARE is_blacklisted INT;
+
+    SELECT COUNT(*) INTO is_blacklisted
+    FROM blacklist
+    WHERE roll_no = NEW.student_id;
+
+    IF is_blacklisted > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Student is blacklisted and cannot make booking';
+    END IF;
+END//
