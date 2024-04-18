@@ -47,7 +47,7 @@ end
 
 CREATE PROCEDURE `search_room`(in p_type varchar(255), in p_booked_date date, in p_booked_time time)
 begin
-select * from sport where id not in(select room_id from booking where booked_date = p_booked_type and booked_time  = p_booked_time and status != 'Denied') and type = p_type;
+select * from sport where id not in(select room_id from booking where booked_date = p_booked_date and booked_time  = p_booked_time and status != 'Denied') and type = p_type;
 end
 
 CREATE PROCEDURE `update_student_password`(in p_id bigint, in p_password varchar(50))
