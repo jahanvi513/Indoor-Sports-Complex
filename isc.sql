@@ -110,3 +110,8 @@ end
 
 ALTER TABLE booking
 ADD COLUMN is_blacklist BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE blacklist
+ADD CONSTRAINT fk_blacklist_student
+FOREIGN KEY (roll_no)
+REFERENCES student(roll_no);
