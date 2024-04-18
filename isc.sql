@@ -60,7 +60,21 @@ begin
 select * from booking where student_id = p_id;
 end
 
-CREATE TABLE `supervisor` (
+ CREATE VIEW `student_bookings` AS
+  SELECT 
+        `booking`.`id` AS `id`,
+        `booking`.`room_id` AS `room_id`,
+        `sport`.`Type` AS `type`,
+        `booking`.`booked_date` AS `booked_date`,
+        `booking`.`booked_time` AS `booked_time`,
+        `booking`.`student_id` AS `student_id`,
+        `booking`.`time_of_booking` AS `time_of_booking`
+  FROM
+        (`booking`
+        JOIN `sport` ON ((`booking`.`id` = `sport`.`id`)))
+  ORDER BY `booking`.`id`
+
+  CREATE TABLE `supervisor` (
   `id` bigint NOT NULL,
   `name` varchar(255) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
