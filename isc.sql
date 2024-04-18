@@ -107,17 +107,6 @@ from booking b
 join sport s on b.room_id = s.id
 where b.status = 'Pending';
 end
-  
-CREATE PROCEDURE make_booking(
-    IN p_room_id INT,
-    IN p_booked_date DATE,
-    IN p_booked_time TIME,
-    IN p_student_id BIGINT
-)
-BEGIN
-    INSERT INTO booking (room_id, booked_date, booked_time, student_id)
-    VALUES (p_room_id, p_booked_date, p_booked_time, p_student_id);
-END //
 
 ALTER TABLE booking
 ADD COLUMN is_blacklist BOOLEAN DEFAULT FALSE;
