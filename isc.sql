@@ -81,7 +81,7 @@ CREATE TABLE blacklist (
     roll_no bigint NOT NULL,
     reason varchar(255),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (student_id)
+    
 );
 
 CREATE TRIGGER before_booking
