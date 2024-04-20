@@ -14,25 +14,30 @@ except mysql.connector.Error as e:
     st.error(f"Error connecting to MySQL database: {e}")
     st.stop()
 
-# Function to create a new student
-def create_student():
-    try:
-        st.subheader("Student Registration")
-        roll_number = st.text_input("Enter Roll Number")
-        name = st.text_input("Enter Name")
-        email = st.text_input("Enter Email")
-        password = st.text_input("Enter Password", type="password")
-        phone_number = st.text_input("Enter Phone Number")
-        department = st.text_input("Enter Department")
-        year = st.number_input("Enter Year", min_value=1)
-        if st.button("Register"):
-            # Using the provided stored procedure to insert a new student
-            mycursor.callproc("insert_new_student", (roll_number, name, email, password, phone_number, department, year))
-            mydb.commit()
-            st.success("Registration Successful!")
-            student_portal()  # After successful registration, go to student portal
-    except mysql.connector.Error as e:
-        st.error(f"Error creating student: {e}")
+# Function for student login
+def student_login():
+    st.subheader("Student Login")
+    name = st.text_input("Enter Name")
+    roll_number = st.text_input("Enter Roll Number", max_chars=10)
+    email = st.text_input("Enter Email")
+    password = st.text_input("Enter Password", type="password")
+
+    if st.button("Login"):
+        try:
+            # Check if the entered credentials match with records in the 'student' table
+            sql = "SELECT * FROM student WHERE Name = %s AND roll_no = %s AND Email = %s AND password = %s"
+            val = (name, roll_number, email, password)
+            mycursor.execute(sql, val)
+            result = mycursor.fetchone()
+
+            if result:
+                st.success("Login Successful!")
+                student_portal()  # Proceed to student portal
+            else:
+                st.error("Invalid Credentials. Please try again.")
+
+        except mysql.connector.Error as e:
+            st.error(f"Error during login: {e}")
 
 # Function to create a booking
 def create_booking():
@@ -99,15 +104,21 @@ def student_portal():
 # Function to navigate to supervisor portal
 def supervisor_portal():
     st.title("Supervisor Portal")
-    # Add Supervisor Portal functionality here
+    option = st.sidebar.selectbox("Select an operation", ("Manage Booking Requests", "View Pending Bookings"))
+    if option == "Manage Booking Requests":
+        # Implement manage booking requests functionality here
+        pass
+    elif option == "View Pending Bookings":
+        # Implement view pending bookings functionality here
+        pass
 
 # Main function
 def main():
-    st.title("ISC Slot booking System")
+    st.title("CRUD Operations with MySQL")
 
     user_type = st.sidebar.selectbox("Select User Type", ("Student", "Supervisor"))
     if user_type == "Student":
-        create_student()
+        student_login()  # Changed to student login instead of student registration
     elif user_type == "Supervisor":
         supervisor_portal()
 
