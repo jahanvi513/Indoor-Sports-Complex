@@ -64,7 +64,7 @@ end
   `id` bigint NOT NULL,
   `name` varchar(255) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`supervisor_id`)
+  PRIMARY KEY (`id`)
 );
 
 ALTER TABLE `booking`
