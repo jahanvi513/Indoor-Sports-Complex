@@ -114,3 +114,6 @@ ALTER TABLE blacklist
 ADD CONSTRAINT fk_blacklist_student
 FOREIGN KEY (roll_no)
 REFERENCES student(roll_no);
+
+ALTER TABLE supervisor
+ADD password varchar(50);
