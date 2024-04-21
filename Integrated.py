@@ -17,12 +17,13 @@ except mysql.connector.Error as e:
 # Session state management
 class SessionState:
     def __init__(self, **kwargs):
+        # self.logged_in = False
         self.__dict__.update(kwargs)
 
 def get():
-    if not hasattr(st, 'session_state'):
-        st.session_state = SessionState()
-    return st.session_state
+    if not hasattr(st, 'st.session_state'):
+        st.st.session_state = SessionState()
+    return st.st.session_state
 
 # Function for student login
 def student_login():
@@ -54,12 +55,64 @@ def student_login():
     else:
         student_portal()
 
+# Function for supervisor login
+def supervisor_login():
+    if not st.session_state.logged_in:
+        st.subheader("Supervisor Login")
+        email = st.text_input("Enter Email")
+        password = st.text_input("Enter Password", type="password")
+
+        if st.button("Login"):
+            try:
+                # Check if the entered credentials match with records in the 'supervisor' table
+                sql = "SELECT * FROM supervisor WHERE email = %s AND password = %s"
+                val = (email, password)
+                mycursor.execute(sql, val)
+                result = mycursor.fetchone()
+
+                if result:
+                    st.success("Login Successful!")
+                    st.session_state.logged_in = True
+                    supervisor_portal()
+                else:
+                    st.error("Invalid Credentials. Please try again.")
+
+            except mysql.connector.Error as e:
+                st.error(f"Error during login: {e}")
+    else:
+        supervisor_portal()
+
+# Function to navigate to supervisor portal
+def supervisor_portal():
+    st.title("Supervisor Portal")
+    option = st.sidebar.selectbox("Select an operation", ("Manage Booking Requests", "View Pending Bookings"))
+    if option == "Manage Booking Requests":
+        manage_booking_requests()  # Implement manage_booking_requests function
+    elif option == "View Pending Bookings":
+        view_pending_bookings()  # Implement view_pending_bookings function
+
+# Function to manage booking requests by supervisor
+def manage_booking_requests():
+    st.subheader("Manage Booking Requests")
+    # Implement the functionality to manage booking requests here
+
+# Function to view pending bookings
+def view_pending_bookings():
+    st.subheader("View Pending Bookings")
+    # Implement the functionality to view pending bookings here
+    
+
 # Function to create a booking
 def create_booking():
+    # if not st.session_state.logged_in:
+    #     st.error("Please login first.")
+    #     return
     st.subheader("Create Booking")
-    room_type = st.selectbox("Select Room Type", ["Badminton Court", "Yoga Room", "Basketball Court", "Gym"])
+    room_type = st.selectbox("Select Room Type", ["Badminton", "Yoga", "Basketball", "Gym"])
     booking_date = st.date_input("Select Booking Date")
     booking_time = st.time_input("Select Booking Time")
+    
+    # st.write("Session State (Before Button Click):", st.session_state.__dict__)
     
     if st.button("Book"):
         if not st.session_state.logged_in:
@@ -68,7 +121,6 @@ def create_booking():
         
         student_id = st.session_state.student_id
         try:
-            
             # Using the provided stored procedure to search for available rooms
             mycursor.callproc("search_room", (room_type, booking_date, booking_time))
             # Fetching the result from the stored procedure
@@ -91,7 +143,8 @@ def create_booking():
                 st.error("No results returned from the stored procedure.")
         except mysql.connector.Error as e:
             st.error(f"Error creating booking: {e}")
-        
+
+
 # Function to navigate to student portal
 def student_portal():
     st.title("Student Portal")
@@ -106,13 +159,14 @@ def student_portal():
 # Main function
 def main():
     st.title("Indoor Sports Complex")
-
-    # Initialize session state variables
+    
     if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
+       st.session_state.logged_in = False
 
     if 'student_id' not in st.session_state:
-        st.session_state.student_id = None
+      st.session_state.student_id = None
+   
+    # st.session_state = get()
 
     user_type = st.sidebar.selectbox("Select User Type", ("Student", "Supervisor"))
     if user_type == "Student":
