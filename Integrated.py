@@ -25,7 +25,7 @@ def get():
         st.session_state = SessionState()
     return st.session_state
 
-# Function for supervisor login
+# Supervisor Login Function
 def supervisor_login():
     if not st.session_state.logged_in:
         st.subheader("Supervisor Login")
@@ -55,7 +55,7 @@ def supervisor_login():
 # Function to navigate to supervisor portal
 def supervisor_portal():
     st.title("Supervisor Portal")
-    option = st.sidebar.selectbox("Select an operation", ("Manage Booking Requests", "View Pending Bookings"))
+    option = st.sidebar.selectbox("What do you have in mind?", ("Manage Booking Requests", "View Pending Bookings"))
     if option == "Manage Booking Requests":
         manage_booking_requests()  # Implement manage_booking_requests function
     elif option == "View Pending Bookings":
@@ -90,6 +90,42 @@ def student_login():
                 st.error(f"Error during login: {e}")
     else:
         student_portal()
+        
+# Function to manage booking requests by supervisor
+def manage_booking_requests():
+    st.subheader("Manage Booking Requests")
+    mycursor.execute("SELECT id, room_id, booked_date, booked_time, student_id, status FROM booking WHERE status = 'Pending'")
+    bookings = mycursor.fetchall()
+
+    for booking in bookings:
+        with st.expander(f"Booking ID {booking[0]} - Date: {booking[2]}, Time: {booking[3]}"):
+            st.write(f"Room ID: {booking[1]}")
+            st.write(f"Student ID: {booking[4]}")
+            st.write(f"Current Status: {booking[5]}")
+            new_status = st.selectbox("Update Status", ["Accepted", "Denied"], key=f"status_{booking[0]}")
+            if st.button("Update", key=f"update_{booking[0]}"):
+                update_status(booking[0], new_status)
+
+def update_status(booking_id, new_status):
+    mycursor.callproc('manage_booking_request', [booking_id, new_status])
+    mydb.commit()
+    st.success(f"Booking ID {booking_id} status updated to {new_status}")
+
+# Function to view pending bookings
+def view_pending_bookings():
+    st.subheader("Pending Bookings")
+    mycursor.execute("SELECT id, room_id, booked_date, booked_time, student_id, status FROM booking WHERE status = 'Pending'")
+    bookings = mycursor.fetchall()
+    
+    if bookings:
+        for booking in bookings:
+            with st.expander(f"Booking ID {booking[0]} - Date: {booking[2]}, Time: {booking[3]}"):
+                st.text(f"Room ID: {booking[1]}")
+                st.text(f"Student ID: {booking[4]}")
+                st.text(f"Status: {booking[5]}")
+    else:
+        st.write("No pending bookings.")
+
 
 def create_booking():
     st.subheader("Create Booking")
@@ -114,7 +150,7 @@ def create_booking():
 
     if st.button("Book"):
         if not st.session_state.logged_in:
-            st.error("Please login first.")
+            st.error("Please login to book slots.")
             return  # Exit the function if not logged in
         
         student_id = st.session_state.student_id
@@ -145,9 +181,9 @@ def create_booking():
                     val = (room_id, booking_date, booking_time, student_id)
                     mycursor.execute(sql, val)
                     mydb.commit()
-                    st.success("Booking Successful!")
+                    st.success("Booking Successful! See you at ISC!")
                 else:
-                    st.error("No available rooms matching the criteria.")
+                    st.error("No available rooms.")
             else:
                 st.error("No results returned from the stored procedure.")
         except mysql.connector.Error as e:
@@ -196,9 +232,9 @@ def delete_booking():
 
         if bookings:
             booking_labels = [booking[1] for booking in bookings]
-            booking_to_delete = st.selectbox("Select a booking to delete:", booking_labels)
+            booking_to_delete = st.selectbox("Which booking do you want to delete?", booking_labels)
 
-            if st.button("Delete Booking"):
+            if st.button("Delete"):
                 booking_id = next(booking[0] for booking in bookings if booking[1] == booking_to_delete)
                 delete_sql = "DELETE FROM booking WHERE id = %s"
                 delete_val = (booking_id,)
@@ -207,14 +243,14 @@ def delete_booking():
                 st.success("Booking deleted successfully.")
                 st.experimental_rerun()
         else:
-            st.write("No bookings to delete.")
+            st.write("You don't have any bookings to delete")
     except mysql.connector.Error as e:
         st.error(f"Database error: {e}")
 
 # Function to navigate to student portal
 def student_portal():
     st.title("Student Portal")
-    option = st.sidebar.selectbox("Select an operation", ("Create Booking", "Your Bookings", "Delete Booking"))
+    option = st.sidebar.selectbox("What do you have in mind?", ("Create Booking", "Your Bookings", "Delete Booking"))
     if option == "Create Booking":
         create_booking()
     elif option == "Your Bookings":
@@ -231,8 +267,8 @@ def main():
 
     if 'student_id' not in st.session_state:
         st.session_state.student_id = None
-
-    user_type = st.sidebar.selectbox("Select User Type", ("Student", "Supervisor"))
+                
+    user_type = st.sidebar.selectbox("Who are you?", ("Student", "Supervisor"))
     if user_type == "Student":
         student_login()
     elif user_type == "Supervisor":
