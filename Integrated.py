@@ -34,7 +34,7 @@ def supervisor_login():
 
         if st.button("Login"):
             try:
-                # Check if the entered credentials match with records in the 'supervisor' table
+                # Autheticate supervisor credentials with the database
                 sql = "SELECT * FROM supervisor WHERE email = %s AND password = %s"
                 val = (email, password)
                 mycursor.execute(sql, val)
@@ -67,7 +67,6 @@ def supervisor_portal():
 def manage_booking_requests():
     st.subheader("Manage Booking Requests")
     mycursor.callproc('get_pending_bookings')
-    # Fetch the results from the cursor
     bookings = next(mycursor.stored_results()).fetchall()
 
     for booking in bookings:
@@ -89,7 +88,7 @@ def update_status(booking_id, new_status):
 def supervisor_view():
     st.subheader("View Bookings")
 
-    # Query to fetch accepted and denied bookings
+    # Fetching accepted and denied bookings
     query = """
     SELECT id, room_id, booked_date, booked_time, student_id, status 
     FROM booking 
@@ -103,12 +102,12 @@ def supervisor_view():
         st.write("There are no accepted or denied bookings to display.")
         return
 
-    # Display bookings grouped by status
+    # Displaying bookings grouped by status
     current_status = None
     for booking in bookings:
         if booking[5] != current_status:
             if current_status is not None:
-                st.markdown("---")  # Optional: add a separator between statuses
+                st.markdown("---")
             st.subheader(f"{booking[5]} Bookings")
             current_status = booking[5]
 
@@ -174,20 +173,18 @@ def create_booking():
     room_type = st.selectbox("Select Room Type", ["Badminton Court", "Yoga Room", "Basketball Court", "Gym"])
     booking_date = st.date_input("Select Booking Date")
 
-    # Define the time range from 6 am to 7 pm and create a list of 1-hour time slots
-    start_time = datetime.time(6, 0)  # 6 am
-    end_time = datetime.time(19, 0)  # 7 pm
+    # Defining the time range from 6 am to 7 pm and creating a list of 1-hour time slots
+    start_time = datetime.time(6, 0)
+    end_time = datetime.time(19, 0) 
     time_slots = []
 
     current_time = datetime.datetime.combine(booking_date, start_time)
     end_datetime = datetime.datetime.combine(booking_date, end_time)
 
-    # Generate time slots in 1-hour intervals between 6 am and 7 pm
     while current_time <= end_datetime:
         time_slots.append(current_time.time())
         current_time += datetime.timedelta(hours=1)
 
-    # Allow the user to select a booking time from the available 1-hour time slots
     booking_time = st.selectbox("Select Booking Time", time_slots)
 
     if st.button("Book"):
@@ -214,10 +211,10 @@ def create_booking():
             mycursor.callproc("search_room", (room_type, booking_date, booking_time))
             results = mycursor.stored_results()
             if results:
-                result = next(results)  # Fetch the first result
-                rows = result.fetchall()  # Fetch all rows from the first result
+                result = next(results)
+                rows = result.fetchall() 
                 if rows:
-                    room_id = rows[0][0]  # Assuming room ID is the first column in the result
+                    room_id = rows[0][0] 
                     # Inserting the booking details into the 'booking' table
                     sql = "INSERT INTO booking (room_id, booked_date, booked_time, student_id) VALUES (%s, %s, %s, %s)"
                     val = (room_id, booking_date, booking_time, student_id)
@@ -299,7 +296,7 @@ def student_login():
 
         if st.button("Login"):
             try:
-                # Check if the entered credentials match with records in the 'student' table
+                # Autheticate student credentials with the database
                 sql = "SELECT * FROM student WHERE Name = %s AND roll_no = %s AND Email = %s AND password = %s"
                 val = (name, roll_number, email, password)
                 mycursor.execute(sql, val)
@@ -342,9 +339,9 @@ def main():
     user_type = st.sidebar.selectbox("Who are you?", ("Student", "Supervisor"))
     
     if user_type == "Student":
-        student_login()
+        student_login()   # Implement student_login function
     elif user_type == "Supervisor":
-        supervisor_login()  # Implement supervisor_login function if required
+        supervisor_login()  # Implement supervisor_login function
 
 if __name__ == "__main__":
     main()
