@@ -78,13 +78,6 @@ SELECT b.id, s.Type, b.booked_date, b.booked_time, b.status
         ORDER BY b.booked_date DESC, b.booked_time DESC;
 END;
 
-CREATE PROCEDURE manage_booking_request(p_booking_id bigint, p_status ENUM('Accepted', 'Denied'))
-BEGIN
-    UPDATE booking
-    SET status = p_status
-    WHERE id = p_booking_id;
-END;
-
 CREATE PROCEDURE get_pending_bookings()
 BEGIN
     SELECT id, room_id, booked_date, booked_time, student_id, status 
