@@ -55,57 +55,20 @@ def supervisor_login():
 # Function to navigate to supervisor portal
 def supervisor_portal():
     st.title("Supervisor Portal")
-    option = st.sidebar.selectbox("What do you have in mind?", ("Manage Booking Requests", "View Pending Bookings", "Manage Blacklist"))
+    option = st.sidebar.selectbox("What do you have in mind?", ("Manage Booking Requests", "View Bookings", "Manage Blacklist"))
     if option == "Manage Booking Requests":
         manage_booking_requests()  # Implement manage_booking_requests function
-    elif option == "View Pending Bookings":
+    elif option == "View Bookings":
         supervisor_view()  # Implement supervisor_view function
     elif option == "Manage Blacklist":
         manage_blacklist()  # Implement manage_blacklist function
         
-# Function for student login
-def student_login():
-    if not st.session_state.logged_in:
-        st.subheader("Student Login")
-        name = st.text_input("Enter Name")
-        roll_number = st.text_input("Enter Roll Number", max_chars=10)
-        email = st.text_input("Enter Email")
-        password = st.text_input("Enter Password", type="password")
-
-        if st.button("Login"):
-            try:
-                # Check if the entered credentials match with records in the 'student' table
-                sql = "SELECT * FROM student WHERE Name = %s AND roll_no = %s AND Email = %s AND password = %s"
-                val = (name, roll_number, email, password)
-                mycursor.execute(sql, val)
-                result = mycursor.fetchone()
-
-                if result:
-                    # Check if the student is blacklisted
-                    blacklist_check_sql = "SELECT COUNT(*) FROM blacklist WHERE roll_no = %s"
-                    mycursor.execute(blacklist_check_sql, (roll_number,))
-                    is_blacklisted = mycursor.fetchone()[0]
-
-                    if is_blacklisted > 0:
-                        st.error("You have been blacklisted. Please contact administration for more details.")
-                    else:
-                        st.success("Login Successful!")
-                        st.session_state.logged_in = True
-                        st.session_state.student_id = result[0]
-                        student_portal()
-                else:
-                    st.error("Invalid Credentials. Please try again.")
-
-            except mysql.connector.Error as e:
-                st.error(f"Error during login: {e}")
-    else:
-        student_portal()
-        
 # Function to manage booking requests by supervisor
 def manage_booking_requests():
     st.subheader("Manage Booking Requests")
-    mycursor.execute("SELECT id, room_id, booked_date, booked_time, student_id, status FROM booking WHERE status = 'Pending'")
-    bookings = mycursor.fetchall()
+    mycursor.callproc('get_pending_bookings')
+    # Fetch the results from the cursor
+    bookings = next(mycursor.stored_results()).fetchall()
 
     for booking in bookings:
         with st.expander(f"Booking ID {booking[0]} - Date: {booking[2]}, Time: {booking[3]}"):
@@ -116,11 +79,13 @@ def manage_booking_requests():
             if st.button("Update", key=f"update_{booking[0]}"):
                 update_status(booking[0], new_status)
 
+# Function to update booking request status
 def update_status(booking_id, new_status):
-    mycursor.callproc('manage_booking_request', [booking_id, new_status])
+    mycursor.callproc('update_booking_request', [booking_id, new_status])
     mydb.commit()
     st.success(f"Booking ID {booking_id} status updated to {new_status}")
 
+#Function to display all approved/denied bookings for supervisor
 def supervisor_view():
     st.subheader("View Bookings")
 
@@ -152,6 +117,7 @@ def supervisor_view():
             st.text(f"Student ID: {booking[4]}")
             st.text(f"Status: {booking[5]}")
 
+#Function to manage blacklisted students
 def manage_blacklist():
     st.subheader("Manage Student Blacklist")
 
@@ -202,6 +168,7 @@ def manage_blacklist():
     except mysql.connector.Error as e:
         st.error(f"Error retrieving blacklist: {e}")
 
+#Function to create booking
 def create_booking():
     st.subheader("Create Booking")
     room_type = st.selectbox("Select Room Type", ["Badminton Court", "Yoga Room", "Basketball Court", "Gym"])
@@ -264,7 +231,6 @@ def create_booking():
         except mysql.connector.Error as e:
             st.error(f"Error creating booking: {e}")
 
-
 # Function to view bookings
 def view_bookings():
     if not st.session_state.logged_in:
@@ -322,6 +288,36 @@ def delete_booking():
     except mysql.connector.Error as e:
         st.error(f"Database error: {e}")
 
+# Function for student login
+def student_login():
+    if not st.session_state.logged_in:
+        st.subheader("Student Login")
+        name = st.text_input("Enter Name")
+        roll_number = st.text_input("Enter Roll Number", max_chars=10)
+        email = st.text_input("Enter Email")
+        password = st.text_input("Enter Password", type="password")
+
+        if st.button("Login"):
+            try:
+                # Check if the entered credentials match with records in the 'student' table
+                sql = "SELECT * FROM student WHERE Name = %s AND roll_no = %s AND Email = %s AND password = %s"
+                val = (name, roll_number, email, password)
+                mycursor.execute(sql, val)
+                result = mycursor.fetchone()
+
+                if result:
+                    st.success("Login Successful!")
+                    st.session_state.logged_in = True
+                    st.session_state.student_id = result[0]
+                    student_portal()
+                else:
+                    st.error("Invalid Credentials. Please try again.")
+
+            except mysql.connector.Error as e:
+                st.error(f"Error during login: {e}")
+    else:
+        student_portal()
+        
 # Function to navigate to student portal
 def student_portal():
     st.title("Student Portal")
