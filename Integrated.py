@@ -55,11 +55,13 @@ def supervisor_login():
 # Function to navigate to supervisor portal
 def supervisor_portal():
     st.title("Supervisor Portal")
-    option = st.sidebar.selectbox("What do you have in mind?", ("Manage Booking Requests", "View Pending Bookings"))
+    option = st.sidebar.selectbox("What do you have in mind?", ("Manage Booking Requests", "View Pending Bookings", "Manage Blacklist"))
     if option == "Manage Booking Requests":
         manage_booking_requests()  # Implement manage_booking_requests function
     elif option == "View Pending Bookings":
         supervisor_view()  # Implement supervisor_view function
+    elif option == "Manage Blacklist":
+        manage_blacklist()  # Implement manage_blacklist function
         
 # Function for student login
 def student_login():
@@ -79,10 +81,18 @@ def student_login():
                 result = mycursor.fetchone()
 
                 if result:
-                    st.success("Login Successful!")
-                    st.session_state.logged_in = True
-                    st.session_state.student_id = result[0]
-                    student_portal()
+                    # Check if the student is blacklisted
+                    blacklist_check_sql = "SELECT COUNT(*) FROM blacklist WHERE roll_no = %s"
+                    mycursor.execute(blacklist_check_sql, (roll_number,))
+                    is_blacklisted = mycursor.fetchone()[0]
+
+                    if is_blacklisted > 0:
+                        st.error("You have been blacklisted. Please contact administration for more details.")
+                    else:
+                        st.success("Login Successful!")
+                        st.session_state.logged_in = True
+                        st.session_state.student_id = result[0]
+                        student_portal()
                 else:
                     st.error("Invalid Credentials. Please try again.")
 
@@ -142,7 +152,55 @@ def supervisor_view():
             st.text(f"Student ID: {booking[4]}")
             st.text(f"Status: {booking[5]}")
 
+def manage_blacklist():
+    st.subheader("Manage Student Blacklist")
 
+    # Form to add a student to the blacklist
+    with st.form("blacklist_form"):
+        bl_roll_no = st.text_input("Enter Student Roll Number to blacklist")
+        bl_reason = st.text_area("Reason for blacklisting")
+        submit_bl = st.form_submit_button("Blacklist Student")
+    
+    if submit_bl:
+        if bl_roll_no and bl_reason:
+            try:
+                sql = "INSERT INTO blacklist (roll_no, reason) VALUES (%s, %s)"
+                mycursor.execute(sql, (bl_roll_no, bl_reason))
+                mydb.commit()
+                st.success("Student blacklisted successfully.")
+            except mysql.connector.Error as e:
+                st.error(f"Error blacklisting student: {e}")
+
+    # Option to unblacklist a student
+    with st.form("unblacklist_form"):
+        ub_roll_no = st.text_input("Enter Student Roll Number to unblacklist")
+        submit_ub = st.form_submit_button("Unblacklist Student")
+
+    if submit_ub:
+        if ub_roll_no:
+            try:
+                sql = "DELETE FROM blacklist WHERE roll_no = %s"
+                mycursor.execute(sql, (ub_roll_no,))
+                mydb.commit()
+                if mycursor.rowcount > 0:
+                    st.success("Student unblacklisted successfully.")
+                else:
+                    st.error("No such student found in blacklist.")
+            except mysql.connector.Error as e:
+                st.error(f"Error unblacklisting student: {e}")
+
+    # Viewing all blacklisted students
+    st.subheader("Current Blacklist")
+    try:
+        mycursor.execute("SELECT roll_no, reason, timestamp FROM blacklist")
+        results = mycursor.fetchall()
+        if results:
+            for result in results:
+                st.write(f"Roll No: {result[0]}, Reason: {result[1]}, Timestamp: {result[2]}")
+        else:
+            st.write("No students are currently blacklisted.")
+    except mysql.connector.Error as e:
+        st.error(f"Error retrieving blacklist: {e}")
 
 def create_booking():
     st.subheader("Create Booking")
@@ -274,7 +332,7 @@ def student_portal():
         view_bookings()
     elif option == "Delete Booking":
         delete_booking()
-
+    
 # Main function
 def main():
     st.title("Indoor Sports Complex")
@@ -286,6 +344,7 @@ def main():
         st.session_state.student_id = None
                 
     user_type = st.sidebar.selectbox("Who are you?", ("Student", "Supervisor"))
+    
     if user_type == "Student":
         student_login()
     elif user_type == "Supervisor":
