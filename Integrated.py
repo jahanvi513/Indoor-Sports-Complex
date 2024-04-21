@@ -1,5 +1,6 @@
 import mysql.connector
 import streamlit as st
+import datetime
 
 # Establishing connection with the MySQL database
 try:
@@ -7,7 +8,7 @@ try:
         host="localhost",
         user="root",
         password="#College2024",
-        database="ISC"  
+        database="ISC"
     )
     mycursor = mydb.cursor()
 except mysql.connector.Error as e:
@@ -16,44 +17,13 @@ except mysql.connector.Error as e:
 
 # Session state management
 class SessionState:
-    def __init__(self, **kwargs):
-        # self.logged_in = False
-        self.__dict__.update(kwargs)
+    def _init_(self, **kwargs):
+        self._dict_.update(kwargs)
 
 def get():
-    if not hasattr(st, 'st.session_state'):
-        st.st.session_state = SessionState()
-    return st.st.session_state
-
-# Function for student login
-def student_login():
-    if not st.session_state.logged_in:
-        st.subheader("Student Login")
-        name = st.text_input("Enter Name")
-        roll_number = st.text_input("Enter Roll Number", max_chars=10)
-        email = st.text_input("Enter Email")
-        password = st.text_input("Enter Password", type="password")
-
-        if st.button("Login"):
-            try:
-                # Check if the entered credentials match with records in the 'student' table
-                sql = "SELECT * FROM student WHERE Name = %s AND roll_no = %s AND Email = %s AND password = %s"
-                val = (name, roll_number, email, password)
-                mycursor.execute(sql, val)
-                result = mycursor.fetchone()
-
-                if result:
-                    st.success("Login Successful!")
-                    st.session_state.logged_in = True
-                    st.session_state.student_id = result[0]
-                    student_portal()
-                else:
-                    st.error("Invalid Credentials. Please try again.")
-
-            except mysql.connector.Error as e:
-                st.error(f"Error during login: {e}")
-    else:
-        student_portal()
+    if not hasattr(st, 'session_state'):
+        st.session_state = SessionState()
+    return st.session_state
 
 # Function for supervisor login
 def supervisor_login():
@@ -90,45 +60,84 @@ def supervisor_portal():
         manage_booking_requests()  # Implement manage_booking_requests function
     elif option == "View Pending Bookings":
         view_pending_bookings()  # Implement view_pending_bookings function
+        
+# Function for student login
+def student_login():
+    if not st.session_state.logged_in:
+        st.subheader("Student Login")
+        name = st.text_input("Enter Name")
+        roll_number = st.text_input("Enter Roll Number", max_chars=10)
+        email = st.text_input("Enter Email")
+        password = st.text_input("Enter Password", type="password")
 
-# Function to manage booking requests by supervisor
-def manage_booking_requests():
-    st.subheader("Manage Booking Requests")
-    # Implement the functionality to manage booking requests here
+        if st.button("Login"):
+            try:
+                # Check if the entered credentials match with records in the 'student' table
+                sql = "SELECT * FROM student WHERE Name = %s AND roll_no = %s AND Email = %s AND password = %s"
+                val = (name, roll_number, email, password)
+                mycursor.execute(sql, val)
+                result = mycursor.fetchone()
 
-# Function to view pending bookings
-def view_pending_bookings():
-    st.subheader("View Pending Bookings")
-    # Implement the functionality to view pending bookings here
-    
+                if result:
+                    st.success("Login Successful!")
+                    st.session_state.logged_in = True
+                    st.session_state.student_id = result[0]
+                    student_portal()
+                else:
+                    st.error("Invalid Credentials. Please try again.")
 
-# Function to create a booking
+            except mysql.connector.Error as e:
+                st.error(f"Error during login: {e}")
+    else:
+        student_portal()
+
 def create_booking():
-    # if not st.session_state.logged_in:
-    #     st.error("Please login first.")
-    #     return
     st.subheader("Create Booking")
-    room_type = st.selectbox("Select Room Type", ["Badminton", "Yoga", "Basketball", "Gym"])
+    room_type = st.selectbox("Select Room Type", ["Badminton Court", "Yoga Room", "Basketball Court", "Gym"])
     booking_date = st.date_input("Select Booking Date")
-    booking_time = st.time_input("Select Booking Time")
-    
-    # st.write("Session State (Before Button Click):", st.session_state.__dict__)
-    
+
+    # Define the time range from 6 am to 7 pm and create a list of 1-hour time slots
+    start_time = datetime.time(6, 0)  # 6 am
+    end_time = datetime.time(19, 0)  # 7 pm
+    time_slots = []
+
+    current_time = datetime.datetime.combine(booking_date, start_time)
+    end_datetime = datetime.datetime.combine(booking_date, end_time)
+
+    # Generate time slots in 1-hour intervals between 6 am and 7 pm
+    while current_time <= end_datetime:
+        time_slots.append(current_time.time())
+        current_time += datetime.timedelta(hours=1)
+
+    # Allow the user to select a booking time from the available 1-hour time slots
+    booking_time = st.selectbox("Select Booking Time", time_slots)
+
     if st.button("Book"):
         if not st.session_state.logged_in:
             st.error("Please login first.")
             return  # Exit the function if not logged in
         
         student_id = st.session_state.student_id
+
         try:
+            # Check for existing booking clash
+            clash_sql = """
+            SELECT COUNT(*) FROM booking 
+            WHERE student_id = %s AND booked_date = %s AND booked_time = %s
+            """
+            mycursor.execute(clash_sql, (student_id, booking_date, booking_time))
+            clash_count = mycursor.fetchone()[0]
+
+            if clash_count > 0:
+                st.error("You already have a booking at this time. Please choose a different time.")
+                return
+
             # Using the provided stored procedure to search for available rooms
             mycursor.callproc("search_room", (room_type, booking_date, booking_time))
-            # Fetching the result from the stored procedure
             results = mycursor.stored_results()
             if results:
                 result = next(results)  # Fetch the first result
                 rows = result.fetchall()  # Fetch all rows from the first result
-                print("Rows:", rows)  # Debugging: Print fetched rows
                 if rows:
                     room_id = rows[0][0]  # Assuming room ID is the first column in the result
                     # Inserting the booking details into the 'booking' table
@@ -145,34 +154,89 @@ def create_booking():
             st.error(f"Error creating booking: {e}")
 
 
+# Function to view bookings
+def view_bookings():
+    if not st.session_state.logged_in:
+        st.error("Please login to view your bookings.")
+        return
+
+    st.subheader("Your Bookings")
+    student_id = st.session_state.student_id
+    try:
+        sql = """
+        SELECT b.id, s.Type, b.booked_date, b.booked_time, b.status
+        FROM booking b
+        JOIN sport s ON b.room_id = s.id
+        WHERE b.student_id = %s
+        ORDER BY b.booked_date DESC, b.booked_time DESC;
+        """
+        mycursor.execute(sql, (student_id,))
+        results = mycursor.fetchall()
+
+        if results:
+            for result in results:
+                st.write(f"Booking ID: {result[0]}, Room Type: {result[1]}, Date: {result[2]}, Time: {result[3]}, Status: {result[4]}")
+        else:
+            st.write("You have no bookings.")
+    except mysql.connector.Error as e:
+        st.error(f"Database error: {e}")
+
+# Function to delete bookings
+def delete_booking():
+    if not st.session_state.logged_in:
+        st.error("Please login to delete bookings.")
+        return
+
+    st.subheader("Delete Booking")
+    student_id = st.session_state.student_id
+    try:
+        sql = "SELECT id, CONCAT('ID: ', id, ', Date: ', booked_date, ', Time: ', booked_time) AS label FROM booking WHERE student_id = %s"
+        mycursor.execute(sql, (student_id,))
+        bookings = mycursor.fetchall()
+
+        if bookings:
+            booking_labels = [booking[1] for booking in bookings]
+            booking_to_delete = st.selectbox("Select a booking to delete:", booking_labels)
+
+            if st.button("Delete Booking"):
+                booking_id = next(booking[0] for booking in bookings if booking[1] == booking_to_delete)
+                delete_sql = "DELETE FROM booking WHERE id = %s"
+                delete_val = (booking_id,)
+                mycursor.execute(delete_sql, delete_val)
+                mydb.commit()
+                st.success("Booking deleted successfully.")
+                st.experimental_rerun()
+        else:
+            st.write("No bookings to delete.")
+    except mysql.connector.Error as e:
+        st.error(f"Database error: {e}")
+
 # Function to navigate to student portal
 def student_portal():
     st.title("Student Portal")
-    option = st.sidebar.selectbox("Select an operation", ("Create Booking", "View Bookings", "Delete Booking"))
+    option = st.sidebar.selectbox("Select an operation", ("Create Booking", "Your Bookings", "Delete Booking"))
     if option == "Create Booking":
         create_booking()
-    elif option == "View Bookings":
-        view_bookings()  # Implement view_bookings function
+    elif option == "Your Bookings":
+        view_bookings()
     elif option == "Delete Booking":
-        delete_booking()  # Implement delete_booking function
+        delete_booking()
 
 # Main function
 def main():
     st.title("Indoor Sports Complex")
-    
+
     if 'logged_in' not in st.session_state:
-       st.session_state.logged_in = False
+        st.session_state.logged_in = False
 
     if 'student_id' not in st.session_state:
-      st.session_state.student_id = None
-   
-    # st.session_state = get()
+        st.session_state.student_id = None
 
     user_type = st.sidebar.selectbox("Select User Type", ("Student", "Supervisor"))
     if user_type == "Student":
         student_login()
     elif user_type == "Supervisor":
-        supervisor_login()
+        supervisor_login()  # Implement supervisor_login function if required
 
 if __name__ == "__main__":
     main()
