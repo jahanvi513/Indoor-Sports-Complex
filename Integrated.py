@@ -59,7 +59,7 @@ def supervisor_portal():
     if option == "Manage Booking Requests":
         manage_booking_requests()  # Implement manage_booking_requests function
     elif option == "View Pending Bookings":
-        view_pending_bookings()  # Implement view_pending_bookings function
+        supervisor_view()  # Implement supervisor_view function
         
 # Function for student login
 def student_login():
@@ -111,20 +111,37 @@ def update_status(booking_id, new_status):
     mydb.commit()
     st.success(f"Booking ID {booking_id} status updated to {new_status}")
 
-# Function to view pending bookings
-def view_pending_bookings():
-    st.subheader("Pending Bookings")
-    mycursor.execute("SELECT id, room_id, booked_date, booked_time, student_id, status FROM booking WHERE status = 'Pending'")
+def supervisor_view():
+    st.subheader("View Bookings")
+
+    # Query to fetch accepted and denied bookings
+    query = """
+    SELECT id, room_id, booked_date, booked_time, student_id, status 
+    FROM booking 
+    WHERE status IN ('Accepted', 'Denied')
+    ORDER BY status DESC, booked_date ASC, booked_time ASC
+    """
+    mycursor.execute(query)
     bookings = mycursor.fetchall()
-    
-    if bookings:
-        for booking in bookings:
-            with st.expander(f"Booking ID {booking[0]} - Date: {booking[2]}, Time: {booking[3]}"):
-                st.text(f"Room ID: {booking[1]}")
-                st.text(f"Student ID: {booking[4]}")
-                st.text(f"Status: {booking[5]}")
-    else:
-        st.write("No pending bookings.")
+
+    if not bookings:
+        st.write("There are no accepted or denied bookings to display.")
+        return
+
+    # Display bookings grouped by status
+    current_status = None
+    for booking in bookings:
+        if booking[5] != current_status:
+            if current_status is not None:
+                st.markdown("---")  # Optional: add a separator between statuses
+            st.subheader(f"{booking[5]} Bookings")
+            current_status = booking[5]
+
+        with st.expander(f"Booking ID {booking[0]} - Date: {booking[2]}, Time: {booking[3]}"):
+            st.text(f"Room ID: {booking[1]}")
+            st.text(f"Student ID: {booking[4]}")
+            st.text(f"Status: {booking[5]}")
+
 
 
 def create_booking():
