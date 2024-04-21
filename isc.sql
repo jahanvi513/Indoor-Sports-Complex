@@ -45,10 +45,16 @@ begin
 delete from student where roll_no = p_id;
 end
 
-CREATE PROCEDURE `search_room`(in p_type varchar(255), in p_booked_date date, in p_booked_time time)
-begin
-select * from sport where id not in(select room_id from booking where booked_date = p_booked_date and booked_time  = p_booked_time and status != 'Denied') and type = p_type;
-end
+CREATE PROCEDURE search_room(IN p_type VARCHAR(255), IN p_booked_date DATE, IN p_booked_time TIME)
+BEGIN
+    SELECT s.id, s.Type 
+    FROM sport s
+    LEFT JOIN booking b ON s.id = b.room_id AND b.booked_date = p_booked_date AND b.booked_time = p_booked_time AND b.status != 'Denied'
+    WHERE s.type = p_type AND b.room_id IS NULL;
+    IF ROW_COUNT() = 0 THEN
+        SELECT 'No rooms available for the specified date and time' AS message;
+    END IF;
+END
 
 CREATE PROCEDURE `update_student_password`(in p_id bigint, in p_password varchar(50))
 begin update student
