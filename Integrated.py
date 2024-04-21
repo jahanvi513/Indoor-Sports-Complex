@@ -17,13 +17,12 @@ except mysql.connector.Error as e:
 # Session state management
 class SessionState:
     def __init__(self, **kwargs):
-        self.logged_in = False
         self.__dict__.update(kwargs)
 
 def get():
-    if not hasattr(st, 'st.session_state'):
-        st.st.session_state = SessionState()
-    return st.st.session_state
+    if not hasattr(st, 'session_state'):
+        st.session_state = SessionState()
+    return st.session_state
 
 # Function for student login
 def student_login():
@@ -57,15 +56,10 @@ def student_login():
 
 # Function to create a booking
 def create_booking():
-    if not st.session_state.logged_in:
-        st.error("Please login first.")
-        return
     st.subheader("Create Booking")
-    room_type = st.selectbox("Select Room Type", ["Badminton", "Yoga", "Basketball", "Gym"])
+    room_type = st.selectbox("Select Room Type", ["Badminton Court", "Yoga Room", "Basketball Court", "Gym"])
     booking_date = st.date_input("Select Booking Date")
     booking_time = st.time_input("Select Booking Time")
-    
-    # st.write("Session State (Before Button Click):", st.session_state.__dict__)
     
     if st.button("Book"):
         if not st.session_state.logged_in:
@@ -74,19 +68,27 @@ def create_booking():
         
         student_id = st.session_state.student_id
         try:
+            
             # Using the provided stored procedure to search for available rooms
             mycursor.callproc("search_room", (room_type, booking_date, booking_time))
-            result = mycursor.fetchall()
-            if result:
-                room_id = result[0][0]  # Assuming room ID is the first column in the result
-                # Inserting the booking details into the 'booking' table
-                sql = "INSERT INTO booking (room_id, booked_date, booked_time, student_id) VALUES (%s, %s, %s, %s)"
-                val = (room_id, booking_date, booking_time, student_id)
-                mycursor.execute(sql, val)
-                mydb.commit()
-                st.success("Booking Successful!")
+            # Fetching the result from the stored procedure
+            results = mycursor.stored_results()
+            if results:
+                result = next(results)  # Fetch the first result
+                rows = result.fetchall()  # Fetch all rows from the first result
+                print("Rows:", rows)  # Debugging: Print fetched rows
+                if rows:
+                    room_id = rows[0][0]  # Assuming room ID is the first column in the result
+                    # Inserting the booking details into the 'booking' table
+                    sql = "INSERT INTO booking (room_id, booked_date, booked_time, student_id) VALUES (%s, %s, %s, %s)"
+                    val = (room_id, booking_date, booking_time, student_id)
+                    mycursor.execute(sql, val)
+                    mydb.commit()
+                    st.success("Booking Successful!")
+                else:
+                    st.error("No available rooms matching the criteria.")
             else:
-                st.error("No available rooms matching the criteria.")
+                st.error("No results returned from the stored procedure.")
         except mysql.connector.Error as e:
             st.error(f"Error creating booking: {e}")
         
@@ -104,14 +106,13 @@ def student_portal():
 # Main function
 def main():
     st.title("Indoor Sports Complex")
-    
+
+    # Initialize session state variables
     if 'logged_in' not in st.session_state:
-       st.session_state.logged_in = False
+        st.session_state.logged_in = False
 
     if 'student_id' not in st.session_state:
-      st.session_state.student_id = None
-   
-    # st.session_state = get()
+        st.session_state.student_id = None
 
     user_type = st.sidebar.selectbox("Select User Type", ("Student", "Supervisor"))
     if user_type == "Student":
